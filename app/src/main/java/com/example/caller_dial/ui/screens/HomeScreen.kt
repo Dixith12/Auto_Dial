@@ -115,8 +115,6 @@ fun HomeScreen() {
                     .fillMaxSize()
                     .padding(horizontal = 20.dp, vertical = 16.dp)
             ) {
-
-                // Header Section
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -140,7 +138,6 @@ fun HomeScreen() {
                     }
                 }
 
-                // Lists
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
@@ -148,7 +145,6 @@ fun HomeScreen() {
                         ContactListCard(contactList = contactList)
                     }
 
-                    // Bottom spacing for FAB
                     item {
                         Spacer(modifier = Modifier.height(80.dp))
                     }
@@ -186,8 +182,6 @@ private fun ContactListCard(contactList: ContactList) {
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
-            // Icon with colored background
             Box(
                 modifier = Modifier
                     .size(56.dp)
@@ -243,8 +237,6 @@ private fun ContactListCard(contactList: ContactList) {
                     )
                 }
             }
-
-            // Call button with gradient
             Button(
                 onClick = { /* Start calling */ },
                 shape = RoundedCornerShape(14.dp),
