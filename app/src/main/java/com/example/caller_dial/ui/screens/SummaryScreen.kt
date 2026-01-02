@@ -26,7 +26,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun SummaryScreen() {
+fun SummaryScreen(
+    onBackToHome: () -> Unit) {
 
     Scaffold { padding ->
 
@@ -339,10 +340,3 @@ private fun CallStatusRowPremium(
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun SummaryScreenPreview() {
-    MaterialTheme {
-        SummaryScreen()
-    }
-}

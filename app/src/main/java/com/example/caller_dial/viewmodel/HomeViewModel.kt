@@ -19,4 +19,8 @@ class HomeViewModel @Inject constructor(
             repository.createList(name)
         }
     }
+
+    fun importCsv() {
+        // TODO: CSV import logic later
+    }
 }

@@ -1,6 +1,5 @@
 package com.example.caller_dial.ui.screens
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -10,11 +9,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.outlined.AccountBox
 import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,30 +19,32 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.caller_dial.ui.theme.AccentTeal
+import com.example.caller_dial.ui.theme.BackgroundGradientEnd
+import com.example.caller_dial.ui.theme.BackgroundGradientStart
+import com.example.caller_dial.ui.theme.CardBackground
+import com.example.caller_dial.ui.theme.PrimaryBlue
+import com.example.caller_dial.ui.theme.TextPrimary
+import com.example.caller_dial.ui.theme.TextSecondary
+import com.example.caller_dial.viewmodel.HomeViewModel
 
-// Modern color palette
-private val PrimaryBlue = Color(0xFF1E88E5)
-private val PrimaryBlueLight = Color(0xFF64B5F6)
-private val AccentTeal = Color(0xFF00BFA5)
-private val BackgroundGradientStart = Color(0xFFF5F7FA)
-private val BackgroundGradientEnd = Color(0xFFE8EAF6)
-private val CardBackground = Color(0xFFFFFFFF)
-private val TextPrimary = Color(0xFF212121)
-private val TextSecondary = Color(0xFF757575)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen() {
+fun HomeScreen(viewModel: HomeViewModel = hiltViewModel(),
+               onStartCalling: (Long) -> Unit) {
+
+    //val lists by viewModel.callLists.collectAsStateWithLifecycle()
+
 
     val dummyLists = listOf(
-        ContactList("Leads – July", 24, PrimaryBlue),
-        ContactList("Customer Follow-up", 18, AccentTeal),
-        ContactList("Marketing Contacts", 42, Color(0xFF7C4DFF)),
-        ContactList("Calling Users", 31, Color(0xFFFF6F00))
+        ContactList(1,"Leads – July", 24, PrimaryBlue),
+        ContactList(2,"Customer Follow-up", 18, AccentTeal),
+        ContactList(3,"Marketing Contacts", 42, Color(0xFF7C4DFF)),
+        ContactList(4,"Calling Users", 31, Color(0xFFFF6F00))
     )
 
     Scaffold(
@@ -78,7 +77,9 @@ fun HomeScreen() {
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { /* Import CSV */ },
+                onClick = {
+                    viewModel.importCsv()
+                },
                 containerColor = PrimaryBlue,
                 contentColor = Color.White,
                 elevation = FloatingActionButtonDefaults.elevation(
@@ -142,7 +143,7 @@ fun HomeScreen() {
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(dummyLists) { contactList ->
-                        ContactListCard(contactList = contactList)
+                        ContactListCard(contactList = contactList,onStartCalling)
                     }
 
                     item {
@@ -155,13 +156,15 @@ fun HomeScreen() {
 }
 
 data class ContactList(
+    val id: Long,
     val name: String,
     val contactCount: Int,
     val accentColor: Color
 )
 
+
 @Composable
-private fun ContactListCard(contactList: ContactList) {
+private fun ContactListCard(contactList: ContactList, onStartCalling: (Long) -> Unit) {
     Card(
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
@@ -238,7 +241,9 @@ private fun ContactListCard(contactList: ContactList) {
                 }
             }
             Button(
-                onClick = { /* Start calling */ },
+                onClick = {
+                    onStartCalling(contactList.id)
+                },
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = PrimaryBlue
@@ -266,10 +271,3 @@ private fun ContactListCard(contactList: ContactList) {
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun HomeScreenPreview() {
-    MaterialTheme {
-        HomeScreen()
-    }
-}
