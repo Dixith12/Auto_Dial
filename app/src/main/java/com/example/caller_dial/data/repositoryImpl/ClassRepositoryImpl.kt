@@ -12,8 +12,8 @@ class CallRepositoryImpl @Inject constructor(
     private val contactDao: CallContactDao
 ) : CallRepository {
 
-    override suspend fun createList(name: String) {
-        listDao.insert(
+    override suspend fun createList(name: String) : Long {
+        return listDao.insert(
             CallListEntity(
                 name = name,
                 createdAt = System.currentTimeMillis()
@@ -85,4 +85,10 @@ class CallRepositoryImpl @Inject constructor(
             answered = contactDao.countByStatus(listId, CallStatus.ANSWERED.name),
             unanswered = contactDao.countByStatus(listId, CallStatus.UNANSWERED.name)
         )
+
+    override suspend fun deleteList(listId: Long) {
+        contactDao.deleteContactsForList(listId)
+        listDao.deleteList(listId)
+    }
+
 }

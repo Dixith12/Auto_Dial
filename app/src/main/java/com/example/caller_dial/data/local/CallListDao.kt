@@ -14,4 +14,8 @@ interface CallListDao {
 
     @Query("SELECT * FROM call_lists ORDER BY createdAt DESC")
     fun getAllLists(): Flow<List<CallListEntity>>
+
+    @Query("DELETE FROM call_lists WHERE id = :listId")
+    suspend fun deleteList(listId: Long)
+
 }

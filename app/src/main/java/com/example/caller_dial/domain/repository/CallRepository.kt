@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface CallRepository {
 
-    suspend fun createList(name: String)
+    suspend fun createList(name: String):Long
     fun getAllLists(): Flow<List<CallList>>
     fun getContacts(listId: Long): Flow<List<CallContact>>
     suspend fun insertContacts(listId: Long, contacts: List<CallContact>)
@@ -16,4 +16,6 @@ interface CallRepository {
         attempts: Int
     )
     suspend fun getSummary(listId: Long): CallSummary
+    suspend fun deleteList(listId: Long)
+
 }

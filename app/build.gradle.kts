@@ -74,6 +74,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx.v2100)
     implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
+
 
     //Room Database
     implementation(libs.androidx.room.runtime)

@@ -21,6 +21,9 @@ fun AppNavGraph() {
             HomeScreen(
                 onStartCalling = { listId ->
                     navController.navigate("caller/$listId")
+                },
+                onOpenSummary = { listId ->
+                    navController.navigate("summary/$listId")
                 }
             )
         }
@@ -39,14 +42,26 @@ fun AppNavGraph() {
             CallerScreen(
                 listId = listId,
                 onFinishCalling = {
-                    navController.navigate(NavRoutes.SUMMARY) {
+                    navController.navigate("summary/$listId") {
                         popUpTo(NavRoutes.HOME)
                     }
                 }
             )
         }
-        composable(NavRoutes.SUMMARY) {
+        composable(
+            route = NavRoutes.SUMMARY,
+            arguments = listOf(
+                navArgument("listId") {
+                    type = NavType.LongType
+                }
+            )
+        ) { backStackEntry ->
+
+            val listId =
+                backStackEntry.arguments?.getLong("listId") ?: return@composable
+
             SummaryScreen(
+                listId = listId,
                 onBackToHome = {
                     navController.navigate(NavRoutes.HOME) {
                         popUpTo(NavRoutes.HOME) { inclusive = true }

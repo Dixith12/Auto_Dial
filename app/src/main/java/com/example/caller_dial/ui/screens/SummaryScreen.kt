@@ -9,27 +9,55 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PhoneMissed
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.PhoneMissed
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.caller_dial.domain.model.CallContact
+import com.example.caller_dial.domain.model.CallStatus
+import com.example.caller_dial.viewmodel.SummaryViewModel
 
 @Composable
 fun SummaryScreen(
-    onBackToHome: () -> Unit) {
+    listId: Long,
+    onBackToHome: () -> Unit,
+    viewModel: SummaryViewModel = hiltViewModel()
+) {
 
-    Scaffold { padding ->
+    val context = LocalContext.current
+
+    val contacts by viewModel.contacts.collectAsStateWithLifecycle()
+    val summary by viewModel.summary.collectAsStateWithLifecycle()
+    val exportResult by viewModel.exportResult.collectAsStateWithLifecycle()
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(listId) {
+        viewModel.loadSummary(listId)
+    }
+
+    LaunchedEffect(exportResult) {
+        exportResult?.let { success ->
+            snackbarHostState.showSnackbar(
+                if (success) "CSV exported successfully"
+                else "CSV export failed"
+            )
+            viewModel.resetExportState()
+        }
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { padding ->
 
         Column(
             modifier = Modifier
@@ -37,7 +65,7 @@ fun SummaryScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(
+                        listOf(
                             Color(0xFF0F2027),
                             Color(0xFF203A43),
                             Color(0xFF2C5364)
@@ -49,7 +77,6 @@ fun SummaryScreen(
         ) {
 
             Spacer(modifier = Modifier.height(24.dp))
-
             Icon(
                 imageVector = Icons.Default.CheckCircle,
                 contentDescription = null,
@@ -66,59 +93,35 @@ fun SummaryScreen(
                 color = Color.White
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Leads – July",
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.85f)
-            )
-
             Spacer(modifier = Modifier.height(32.dp))
-            Card(
-                shape = RoundedCornerShape(24.dp),
-                elevation = CardDefaults.cardElevation(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color(0xFF00BCD4),
-                                    Color(0xFF03A9F4)
+
+            summary?.let {
+                Card(
+                    shape = RoundedCornerShape(24.dp),
+                    elevation = CardDefaults.cardElevation(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(
+                                        Color(0xFF1F4037),
+                                        Color(0xFF99F2C8)
+                                    )
                                 )
                             )
-                        )
-                        .padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp)
-                ) {
-
-                    SummaryRow(
-                        icon = Icons.Default.Phone,
-                        label = "Total Calls",
-                        value = "50",
-                        color = Color.White
-                    )
-
-                    SummaryRow(
-                        icon = Icons.Default.CheckCircle,
-                        label = "Answered",
-                        value = "32",
-                        color = Color(0xFF00E676)
-                    )
-
-                    SummaryRow(
-                        icon = Icons.Default.PhoneMissed,
-                        label = "Unanswered",
-                        value = "18",
-                        color = Color(0xFFFF5252)
-                    )
+                            .padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(20.dp)
+                    ) {
+                        SummaryRow(Icons.Default.Phone, "Total Calls", it.total.toString())
+                        SummaryRow(Icons.Default.CheckCircle, "Answered", it.answered.toString(), Color(0xFF00E676))
+                        SummaryRow(Icons.Default.PhoneMissed, "Unanswered", it.unanswered.toString(), Color(0xFFFF5252))
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(36.dp))
-
+            Spacer(modifier = Modifier.height(24.dp))
             Card(
                 shape = RoundedCornerShape(26.dp),
                 elevation = CardDefaults.cardElevation(10.dp),
@@ -130,7 +133,7 @@ fun SummaryScreen(
                     modifier = Modifier
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(
+                                listOf(
                                     Color(0xFF232526),
                                     Color(0xFF414345)
                                 )
@@ -138,6 +141,7 @@ fun SummaryScreen(
                         )
                         .padding(16.dp)
                 ) {
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
@@ -150,7 +154,12 @@ fun SummaryScreen(
                             modifier = Modifier.weight(1f)
                         )
 
-                        CallStatusMenu()
+                        ExportMenu {
+                            viewModel.exportCsv(
+                                context = context,
+                                fileNamePrefix = "call_report_$listId"
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
@@ -158,25 +167,17 @@ fun SummaryScreen(
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(
-                            listOf(
-                                Pair("+91 98765 43210", "Answered"),
-                                Pair("+91 91234 56789", "Unanswered"),
-                                Pair("+91 99887 66554", "DND"),
-                                Pair("+91 90909 10101", "Answered"),
-                                Pair("+91 98888 77777", "Unanswered")
-                            )
-                        ) { (number, status) ->
-                            CallStatusRowPremium(number, status)
+                        items(contacts) { contact ->
+                            CallStatusRowPremium(contact)
                         }
                     }
                 }
             }
 
+            Spacer(modifier = Modifier.height(24.dp))
 
-            Spacer(modifier = Modifier.height(30.dp))
             Button(
-                onClick = { /* Back to Home */ },
+                onClick = onBackToHome,
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -201,78 +202,62 @@ private fun SummaryRow(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     value: String,
-    color: Color
+    valueColor: Color = Color.White
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = color,
-            modifier = Modifier.size(28.dp)
-        )
-
-        Spacer(modifier = Modifier.width(16.dp))
-
-        Text(
-            text = label,
-            style = MaterialTheme.typography.titleMedium,
-            color = Color.White,
-            modifier = Modifier.weight(1f)
-        )
-
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
-        )
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = Color.White)
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(label, color = Color.White, modifier = Modifier.weight(1f))
+        Text(value, fontWeight = FontWeight.Bold, color = valueColor)
     }
 }
 
 @Composable
-private fun CallStatusRow(
-    number: String,
-    status: String,
-    statusColor: Color
-) {
+private fun CallStatusRowPremium(contact: CallContact) {
+
+    val statusColor = when (contact.status) {
+        CallStatus.ANSWERED -> Color(0xFF00E676)
+        CallStatus.UNANSWERED -> Color(0xFFFF5252)
+        CallStatus.DND -> Color(0xFFFFC107)
+        else -> Color.Gray
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 10.dp),
+            .background(Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
+            .padding(14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
 
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = number,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium
-            )
+        Text(
+            text = contact.phoneNumber,
+            color = Color.White,
+            modifier = Modifier.weight(1f),
+            fontWeight = FontWeight.Medium
+        )
 
+        Box(
+            modifier = Modifier
+                .border(1.dp, statusColor, RoundedCornerShape(50))
+                .padding(horizontal = 14.dp, vertical = 6.dp)
+        ) {
             Text(
-                text = status,
-                style = MaterialTheme.typography.bodyMedium,
-                color = statusColor
+                text = contact.status.name,
+                color = statusColor,
+                fontWeight = FontWeight.SemiBold
             )
         }
     }
 }
 
 @Composable
-private fun CallStatusMenu() {
+private fun ExportMenu(onExportClick: () -> Unit) {
     var expanded by remember { mutableStateOf(false) }
 
     Box {
         IconButton(onClick = { expanded = true }) {
-            Icon(
-                imageVector = Icons.Default.MoreVert,
-                contentDescription = "More",
-                tint = Color.White
-            )
+            Icon(Icons.Default.MoreVert, null, tint = Color.White)
         }
 
         DropdownMenu(
@@ -280,63 +265,12 @@ private fun CallStatusMenu() {
             onDismissRequest = { expanded = false }
         ) {
             DropdownMenuItem(
-                text = { Text("Export as CSV") },
+                text = { Text("Export CSV") },
                 onClick = {
                     expanded = false
+                    onExportClick()
                 }
             )
         }
     }
 }
-
-
-@Composable
-private fun CallStatusRowPremium(
-    number: String,
-    status: String
-) {
-    val statusColor = when (status) {
-        "Answered" -> Color(0xFF00E676)
-        "Unanswered" -> Color(0xFFFF5252)
-        else -> Color(0xFFFFC107)
-    }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                Color.White.copy(alpha = 0.08f),
-                RoundedCornerShape(16.dp)
-            )
-            .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = number,
-                color = Color.White,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium
-            )
-        }
-
-        Box(
-            modifier = Modifier
-                .border(
-                    width = 1.dp,
-                    color = statusColor,
-                    shape = RoundedCornerShape(50)
-                )
-                .padding(horizontal = 14.dp, vertical = 6.dp)
-        ) {
-            Text(
-                text = status,
-                color = statusColor,
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-    }
-}
-

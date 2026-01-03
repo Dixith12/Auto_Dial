@@ -1,7 +1,9 @@
 package com.example.caller_dial.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.caller_dial.data.export.CsvExporter
 import com.example.caller_dial.domain.model.CallContact
 import com.example.caller_dial.domain.model.CallSummary
 import com.example.caller_dial.domain.repository.CallRepository
@@ -23,6 +25,9 @@ class SummaryViewModel @Inject constructor(
     private val _summary = MutableStateFlow<CallSummary?>(null)
     val summary: StateFlow<CallSummary?> = _summary.asStateFlow()
 
+    private val _exportResult = MutableStateFlow<Boolean?>(null)
+    val exportResult: StateFlow<Boolean?> = _exportResult.asStateFlow()
+
     fun loadSummary(listId: Long) {
         viewModelScope.launch {
             repository.getContacts(listId).collect {
@@ -33,5 +38,23 @@ class SummaryViewModel @Inject constructor(
         viewModelScope.launch {
             _summary.value = repository.getSummary(listId)
         }
+    }
+
+    fun exportCsv(
+        context: Context,
+        fileNamePrefix: String
+    ) {
+        viewModelScope.launch {
+            val result = CsvExporter.exportCallsToCsv(
+                context = context,
+                fileNamePrefix = fileNamePrefix,
+                contacts = _contacts.value
+            )
+            _exportResult.value = result
+        }
+    }
+
+    fun resetExportState() {
+        _exportResult.value = null
     }
 }

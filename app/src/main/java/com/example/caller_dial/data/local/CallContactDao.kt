@@ -28,4 +28,7 @@ interface CallContactDao {
 
     @Query("""SELECT COUNT(*) FROM call_contacts WHERE listId = :listId AND status = :status""")
     suspend fun countByStatus(listId: Long, status: String): Int
+
+    @Query("DELETE FROM call_contacts WHERE listId = :listId")
+    suspend fun deleteContactsForList(listId: Long)
 }

@@ -44,15 +44,39 @@ class CallerViewModel @Inject constructor(
         val contact = _currentContact.value ?: return
 
         viewModelScope.launch {
-            repository.updateContact(
-                contactId = contact.id,
-                status = status,
-                note = note,
-                attempts = contact.attempts + 1
-            )
-            moveNext()
+
+            val newAttempts = contact.attempts + 1
+
+            if (status == CallStatus.ANSWERED) {
+                repository.updateContact(
+                    contactId = contact.id,
+                    status = CallStatus.ANSWERED,
+                    note = note,
+                    attempts = newAttempts
+                )
+                moveNext()
+                return@launch
+            }
+
+            if (newAttempts < 2) {
+                repository.updateContact(
+                    contactId = contact.id,
+                    status = CallStatus.PENDING,
+                    note = note,
+                    attempts = newAttempts
+                )
+            } else {
+                repository.updateContact(
+                    contactId = contact.id,
+                    status = CallStatus.UNANSWERED,
+                    note = note,
+                    attempts = newAttempts
+                )
+                moveNext()
+            }
         }
     }
+
 
     private fun moveNext() {
         val next = _currentIndex.value + 1
@@ -63,4 +87,6 @@ class CallerViewModel @Inject constructor(
             _currentContact.value = null
         }
     }
+
+
 }

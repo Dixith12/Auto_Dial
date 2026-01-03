@@ -1,6 +1,9 @@
 package com.example.caller_dial.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -12,17 +15,24 @@ import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.caller_dial.ui.theme.AccentTeal
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.caller_dial.domain.model.CallList
+
 import com.example.caller_dial.ui.theme.BackgroundGradientEnd
 import com.example.caller_dial.ui.theme.BackgroundGradientStart
 import com.example.caller_dial.ui.theme.CardBackground
@@ -35,17 +45,60 @@ import com.example.caller_dial.viewmodel.HomeViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(viewModel: HomeViewModel = hiltViewModel(),
-               onStartCalling: (Long) -> Unit) {
+               onStartCalling: (Long) -> Unit,
+               onOpenSummary: (Long) -> Unit) {
 
-    //val lists by viewModel.callLists.collectAsStateWithLifecycle()
+    val lists by viewModel.callLists.collectAsStateWithLifecycle(emptyList())
 
+    val context = LocalContext.current
 
-    val dummyLists = listOf(
-        ContactList(1,"Leads – July", 24, PrimaryBlue),
-        ContactList(2,"Customer Follow-up", 18, AccentTeal),
-        ContactList(3,"Marketing Contacts", 42, Color(0xFF7C4DFF)),
-        ContactList(4,"Calling Users", 31, Color(0xFFFF6F00))
-    )
+    val csvPickerLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.OpenDocument()
+        ) { uri ->
+            uri?.let {
+                val fileName = context.contentResolver
+                    .query(uri, null, null, null, null)
+                    ?.use { cursor ->
+                        val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                        cursor.moveToFirst()
+                        cursor.getString(nameIndex)
+                    }
+                    ?.substringBeforeLast(".")
+                    ?: "Imported Contacts"
+
+                viewModel.importCsv(
+                    context = context,
+                    uri = it,
+                    listName = fileName
+                )
+            }
+        }
+
+    var listToDelete by remember { mutableStateOf<Long?>(null) }
+
+    if (listToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { listToDelete = null },
+            title = { Text("Delete list?") },
+            text = {
+                Text("This will permanently delete the list and all contacts.")
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteList(listToDelete!!)
+                    listToDelete = null
+                }) {
+                    Text("Delete", color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { listToDelete = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -78,7 +131,8 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel(),
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    viewModel.importCsv()
+                    csvPickerLauncher.launch(arrayOf("*/*"))
+
                 },
                 containerColor = PrimaryBlue,
                 contentColor = Color.White,
@@ -132,7 +186,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel(),
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "${dummyLists.size} lists available",
+                            text = "${lists.size} lists available",
                             style = MaterialTheme.typography.bodyLarge,
                             color = TextSecondary
                         )
@@ -142,8 +196,16 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel(),
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(dummyLists) { contactList ->
-                        ContactListCard(contactList = contactList,onStartCalling)
+                    items(lists) { callList ->
+                        ContactListCard(
+                            contactList = callList,
+                            onStartCalling = onStartCalling,
+                            onOpenSummary = onOpenSummary,
+                            onDeleteRequest = { listId ->
+                                listToDelete = listId
+                            }
+                        )
+
                     }
 
                     item {
@@ -155,17 +217,15 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel(),
     }
 }
 
-data class ContactList(
-    val id: Long,
-    val name: String,
-    val contactCount: Int,
-    val accentColor: Color
-)
-
-
 @Composable
-private fun ContactListCard(contactList: ContactList, onStartCalling: (Long) -> Unit) {
+private fun ContactListCard(
+    contactList: CallList,
+    onStartCalling: (Long) -> Unit,
+    onOpenSummary: (Long) -> Unit,
+    onDeleteRequest: (Long)->Unit
+) {
     Card(
+
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(
@@ -173,6 +233,15 @@ private fun ContactListCard(contactList: ContactList, onStartCalling: (Long) -> 
         ),
         modifier = Modifier
             .fillMaxWidth()
+            .combinedClickable(
+                onClick = {
+                    onOpenSummary(contactList.id)
+                },
+                onLongClick = {
+                    onDeleteRequest(contactList.id)
+                }
+            )
+
             .shadow(
                 elevation = 8.dp,
                 shape = RoundedCornerShape(20.dp),
@@ -192,8 +261,8 @@ private fun ContactListCard(contactList: ContactList, onStartCalling: (Long) -> 
                     .background(
                         Brush.linearGradient(
                             colors = listOf(
-                                contactList.accentColor.copy(alpha = 0.2f),
-                                contactList.accentColor.copy(alpha = 0.1f)
+                                PrimaryBlue.copy(alpha = 0.2f),
+                                PrimaryBlue
                             )
                         )
                     ),
@@ -202,7 +271,7 @@ private fun ContactListCard(contactList: ContactList, onStartCalling: (Long) -> 
                 Icon(
                     imageVector = Icons.Default.Phone,
                     contentDescription = null,
-                    tint = contactList.accentColor,
+                    tint = PrimaryBlue,
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -222,23 +291,13 @@ private fun ContactListCard(contactList: ContactList, onStartCalling: (Long) -> 
 
                 Spacer(modifier = Modifier.height(6.dp))
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(contactList.accentColor)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "${contactList.contactCount} contacts",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary,
-                        fontSize = 14.sp
-                    )
-                }
+                Text(
+                    text = "Imported list",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary,
+                    fontSize = 14.sp
+                )
+
             }
             Button(
                 onClick = {
